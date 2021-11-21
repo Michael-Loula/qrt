@@ -241,9 +241,19 @@ struct Ray {
 
 #[macro_export]
 macro_rules! v3 {
-    ( $( $x:expr ),* ) => {
+    ($x:expr,$y:expr,$z:expr) => {
         {
-            Vec3 {$($x as f64,)*}
+            Vec3 {x: $x as f64, y: $y as f64, z: $z as f64}
+        }
+    };
+}
+
+//macro for easy construction of ray using int or decimal values
+#[macro_export]
+macro_rules! r {
+    ($origin:expr,$direction:expr) => {
+        {
+            Ray {origin: $origin, direction: $direction}
         }
     };
 }
@@ -257,9 +267,9 @@ impl Ray {
     }
 
     fn color(self) -> Vec3 {
-        let t = self.hit_sphere(Vec3 {x: 0.0, y: 0.0, z: -1.0}, 0.5);
+        let t = self.hit_sphere(v3!(0.0, 0.0, -1.0), 0.5);
         let gt = ((self.direction / self.direction.length()).y + 1.0)*0.5;
-        let grad = Vec3{x: 1.0,y: 1.0,z: 1.0}*(1.0-gt) + Vec3{x: 0.5,y: 0.7,z: 1.0}*gt;
+        let grad = v3!( 1.0, 1.0, 1.0)*(1.0-gt) + v3!(0.5,0.7,1.0)*gt;
         if t > 0.0 {
             let n = self.at(t) - Vec3 {x: 0.0, y: 0.0, z: -1.0};
             let n_bar = n/n.length();
@@ -288,6 +298,7 @@ fn main() {
     const W : i32 = 400;
     const AR : f64 = 16.0/9.0;
     const H : i32 = (W as f64/AR) as i32;
+
     
     if let Err(e) = writeln!(std::io::stdout(),"P3\n{} {}\n255",W,H) {
         println!("Writing error: {}", e.to_string()); 
@@ -297,22 +308,22 @@ fn main() {
     let vp_width = AR*vp_height;
     let focal_length = 1.0;
 
-    let origin = Vec3 {x: 0.0,y: 0.0, z: 0.0};
-    let horiz = Vec3 {x: vp_width,y: 0.0, z: 0.0};
-    let vert = Vec3 {x: 0.0,y: vp_height, z: 0.0};
-    let llc = origin - horiz/2.0 - vert/2.0 - Vec3{x: 0.0,y: 0.0, z: focal_length};
+    let origin = v3!(0,0,0);
+    let horiz = v3!(vp_width,0,0);
+    let vert = v3!(0,vp_height,0);
+    let llc = origin - horiz/2.0 - vert/2.0 - v3!(0,0,focal_length);
 
 
     for j in (0..H).rev() {
         for i in 0..W {
             let u = i as f64/(W-1) as f64;
             let v = j as f64/(H-1) as f64;
-            Ray {origin: origin, direction: llc + horiz*u + vert*v - origin}
+            r!(origin, llc + horiz*u + vert*v - origin)
                 .color()
                 .write_color();
         }  
     }
-
+    
 
 }
 
