@@ -1,6 +1,6 @@
 mod vec3;
 
-
+    
 use vec3::Vec3;
 use std::io::{Write,stdout};
 
