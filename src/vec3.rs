@@ -281,11 +281,11 @@ impl Ray {
     fn hit_sphere(self, center: Vec3, radius: f64) -> f64 {
         //quadratic formula
         let oc = self.origin - center;
-        let a = Vec3::dot(self.direction,self.direction);
-        let b = 2.0*Vec3::dot(oc,self.direction);
-        let c = Vec3::dot(oc,oc) - radius*radius;
-        let disc = b*b - 4.0*a*c;
-        if disc < 0.0 {-1.0} else {(-b - disc.powf(0.5))/2.0*a }
+        let a = self.direction.length_squared();
+        let half_b = Vec3::dot(oc,self.direction);
+        let c = Vec3::dot(oc,oc) - radius.powf(2.0);
+        let disc = half_b.powf(2.0) - a*c;
+        if disc < 0.0 {-1.0} else {(-half_b - disc.powf(0.5))/a }
 
     }
 }
