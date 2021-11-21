@@ -235,7 +235,7 @@ impl Vec3 {
 
 
 
-
+//macro for easy construction of ray using int or decimal values
 #[macro_export]
 macro_rules! v3 {
     ($x:expr,$y:expr,$z:expr) => {
@@ -245,7 +245,7 @@ macro_rules! v3 {
     };
 }
 
-//macro for easy construction of ray using int or decimal values
+//macro for easy construction of ray
 #[macro_export]
 macro_rules! r {
     ($origin:expr,$direction:expr) => {
