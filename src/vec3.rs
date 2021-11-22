@@ -264,30 +264,21 @@ impl Ray {
     }
 
     pub fn color(self) -> Vec3 {
-        let t = self.hit_sphere(v3!(0.0, 0.0, -1.0), 0.5);
-        let gt = ((self.direction / self.direction.length()).y + 1.0)*0.5;
-        let grad = v3!( 1.0, 1.0, 1.0)*(1.0-gt) + v3!(0.5,0.7,1.0)*gt;
-        if t > 0.0 {
-            let n = self.at(t) - Vec3 {x: 0.0, y: 0.0, z: -1.0};
-            let n_bar = n/n.length();
+        let s = Sphere {center: v3!(0.0, 0.0, -1.0), radius: 0.5};
+        let hr = s.hit(self,0.0,f64::INFINITY);
+        match hr {
+            Some(x) => {
+                (x.normal+1.0)*0.5
+            }
+            None => {
+                let gt = ((self.direction / self.direction.length()).y + 1.0)*0.5;
+                v3!( 1.0, 1.0, 1.0)*(1.0-gt) + v3!(0.5,0.7,1.0)*gt
+            }
+        }
 
-            (n_bar+1.0)/2.0
-        }
-        else {
-            grad
-        }
     }
 
-    fn hit_sphere(self, center: Vec3, radius: f64) -> f64 {
-        //quadratic formula
-        let oc = self.origin - center;
-        let a = self.direction.length_squared();
-        let half_b = Vec3::dot(oc,self.direction);
-        let c = Vec3::dot(oc,oc) - radius.powf(2.0);
-        let disc = half_b.powf(2.0) - a*c;
-        if disc < 0.0 {-1.0} else {(-half_b - disc.powf(0.5))/a }
 
-    }
 }
 
 pub struct HitRecord {
@@ -309,15 +300,24 @@ impl Hittable for Sphere {
     fn hit(&self, r: Ray, t_0 : f64, t_1 : f64) -> Option<HitRecord> {
         let oc = r.origin - self.center;
         let a = r.direction.length_squared();
+        //println!("a {}", a);
         let half_b = Vec3::dot(oc,r.direction);
+        //println!("hb {}", half_b);
         let c = Vec3::dot(oc,oc) - self.radius.powf(2.0);
+        //println!("c {}", c);
         let disc = half_b.powf(2.0) - a*c;
-        let sqrtd = disc.powf(0.5);
+        //println!("disc {}", disc);
+        let sqrtd = disc.sqrt();
+        //println!("sd {}", sqrtd);
         let root = (-half_b - sqrtd) / a;
-        if root < t_0 || t_1 < root {
+        //println!("r {}", root);
+        if root.is_nan() || root < t_0 || t_1 < root {
+            //println!("thing");
+
             None
         } 
         else {
+            
             let x = r.at(root);
             Some(HitRecord {t: root, point: x, normal: (x - self.center) / self.radius})
 
