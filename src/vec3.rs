@@ -1,6 +1,6 @@
 
 
-
+use std::rc::Rc;
 use std::ops::{Div, Add, Sub, Mul,DivAssign, AddAssign, SubAssign, MulAssign};
 use std::fmt;
 use std::io::{Write};
@@ -212,14 +212,19 @@ impl Vec3 {
         self.length_squared().powf(0.5)
     }
 
+    pub fn is_close_to_zero(&self) -> bool {
+        const eps : f64 = 1e-8;
+        (self.x.abs() < eps) && (self.y.abs() < eps) && (self.z.abs() < eps)
+    }
+
     pub fn write_color(&self, samples_per_pixel : i32) {
         let mut r = self.x;
         let mut g = self.y;
         let mut b = self.z;
         let scale = 1.0 / samples_per_pixel as f64;
-        r *= scale;
-        g *= scale;
-        b *= scale;
+        r = (r*scale).sqrt();
+        g = (g*scale).sqrt();
+        b = (b*scale).sqrt();
         
         if let Err(e) = writeln!(std::io::stdout(),"{} {} {}",(256.0 * clamp(r, 0.0, 0.999)) as i32,(256.0 * clamp(g, 0.0, 0.999)) as i32,(256.0 * clamp(b, 0.0, 0.999)) as i32) {
             println!("Writing error: {}", e.to_string()); 
@@ -270,13 +275,21 @@ fn rv3(x: f64, y: f64) -> Vec3 {
     Vec3 {x: Uniform::from(x..y).sample(&mut t), y: Uniform::from(x..y).sample(&mut t), z: Uniform::from(x..y).sample(&mut t)}
 }
 
-fn rus() -> Vec3 {
+fn random_in_unit() -> Vec3 {
             let mut r;
             loop {
                 r = rv3(-1.0,1.0);
                 if r.length_squared() > 1.0 {continue;} else {break;}
             }
             r
+}
+
+fn random_in_hemisphere(normal : Vec3) -> Vec3 {
+    let in_unit_sphere = random_in_unit();
+    if Vec3::dot(in_unit_sphere, normal) > 0.0
+    {in_unit_sphere}
+    else
+    {in_unit_sphere*-1.0}
 }
 
 
@@ -289,14 +302,16 @@ impl Ray {
 
     pub fn color(self, world : &mut HittableList, depth : i32) -> Vec3 {
         //let s = Sphere {center: v3!(0.0, 0.0, -1.0), radius: 0.5};
-        let hr = world.hit(self,0.0,f64::INFINITY);
+        let hr = world.hit(self,0.001,f64::INFINITY);
         if depth <= 0 {return v3!(0,0,0)} else {}
         match hr {
-            Some(x) => {
-                
-                r!(x.point,(x.point + x.normal + rus() - x.point)).color(world,depth-1)*0.5
-                //(x.normal+1.0)*0.5
-            }
+            Some(ref x) => {
+                            
+                            let (att, scat, hit) = x.mat_ptr.scatter(self,x);
+                            if hit {scat.color(world,depth-1)*att}
+                            else {v3!(0,0,0)}
+                        }
+                    
             None => {
                 let gt = ((self.direction / self.direction.length()).y + 1.0)*0.5;
                 v3!( 1.0, 1.0, 1.0)*(1.0-gt) + v3!(0.5,0.7,1.0)*gt
@@ -308,12 +323,13 @@ impl Ray {
 
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct HitRecord {
     point : Vec3,
     normal : Vec3,
     t : f64,
-    front_face : bool
+    front_face : bool,
+    mat_ptr : Rc<dyn Material>
 
     
 }
@@ -325,6 +341,8 @@ impl HitRecord {
     }
 }
 
+
+
 pub trait Hittable {
     fn hit(&self, r: Ray, t_0 : f64, t_1 : f64) -> Option<HitRecord> ;
 }
@@ -332,7 +350,8 @@ pub trait Hittable {
 
 pub struct Sphere {
     pub center: Vec3,
-    pub radius: f64
+    pub radius: f64,
+    pub mat_ptr: Rc<dyn Material>
 }
 
 impl Hittable for Sphere {
@@ -353,7 +372,7 @@ impl Hittable for Sphere {
             let x = r.at(root);
             let on = (x - self.center) / self.radius;
             let (ff, norm) = HitRecord::gen_face_normal(r, on);
-            Some(HitRecord {t: root, point: x, normal: norm, front_face : ff})
+            Some(HitRecord {t: root, point: x, normal: norm, front_face : ff, mat_ptr : self.mat_ptr.clone()})
 
 
         }
@@ -381,7 +400,7 @@ impl HittableList {
 
 impl Hittable for HittableList {
     fn hit(&self, r: Ray, t_0 : f64, t_1 : f64) -> Option<HitRecord> {
-        let mut hr : HitRecord = HitRecord {point: v3!(0,0,0), normal: v3!(0,0,0), t: 0.0, front_face : false};
+        let mut hr : HitRecord = HitRecord {point: v3!(0,0,0), normal: v3!(0,0,0), t: 0.0, front_face : false, mat_ptr : Rc::<Metal>::new(Metal {albedo : v3!(0.8, 0.8, 0.0)})};
         let mut closest_so_far : f64 = t_1;
         let mut hit_anything : bool = false;
         for obj in self.v.iter() {
@@ -390,7 +409,7 @@ impl Hittable for HittableList {
                 Some(val) => {
                     hit_anything = true;
                     closest_so_far = val.t;
-                    hr = HitRecord {point : val.point, normal : val.normal,t: val.t,front_face : val.front_face};
+                    hr = val;
                 }
                 None => {}
             }
@@ -431,8 +450,47 @@ impl Camera {
 }
 
 #[inline(always)]
-    pub fn clamp(u: f64, min: f64, max : f64) -> f64 {
-        if u < min {min}
-        else if u > max {max}
-        else {u}
+pub fn clamp(u: f64, min: f64, max : f64) -> f64 {
+    if u < min {min}
+    else if u > max {max}
+    else {u}
+}
+
+pub trait Material {
+    fn scatter(&self, r: Ray, hr: &HitRecord) -> (Vec3,Ray,bool);
+}
+
+#[derive(Copy, Clone)]
+pub struct Lambertian {
+    pub albedo : Vec3
+}
+
+#[derive(Copy, Clone)]
+pub struct Metal {
+    pub albedo : Vec3
+}
+ 
+impl Material for Lambertian {
+    fn scatter(&self, r: Ray, hr: &HitRecord) -> (Vec3,Ray,bool) {
+        let rand = random_in_unit();
+        let mut scatter_dir = hr.normal + rand/rand.length();
+        if scatter_dir.is_close_to_zero() {scatter_dir = hr.normal;} else {}
+        (self.albedo,r!(hr.point, scatter_dir),true)
     }
+}
+
+impl Material for Metal {
+    fn scatter(&self, r: Ray, hr: &HitRecord) -> (Vec3,Ray,bool) {
+        let refl = reflect(r.direction/r.direction.length(),hr.normal);
+        let scatter = r!(hr.point, refl);
+        (self.albedo,scatter,Vec3::dot(scatter.direction, hr.normal) > 0.0)
+    }
+}
+
+fn reflect(v : Vec3, n : Vec3) -> Vec3 {
+    return v - n*Vec3::dot(v,n)*2.0;
+}
+
+
+
+
