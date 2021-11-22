@@ -5,11 +5,13 @@ use vec3::Vec3;
 use vec3::Sphere;
 use vec3::Camera;
 use vec3::Metal;
+use vec3::Dielectric;
 use vec3::Lambertian;
 use vec3::HittableList;
 use std::io::{Write,stdout};
 use rand::distributions::{Distribution, Uniform};
 use std::rc::Rc;
+use rand::Rng;
 
 fn main() {
     const W : i32 = 400;
@@ -25,22 +27,21 @@ fn main() {
 
     let mut world = HittableList {v: Vec::new()};
 
-    let m1 = Rc::<Metal>::new(Metal {albedo : v3!(0.8, 0.8, 0.0)});
-    let s1 = Sphere {center: v3!(0,0,-1), radius: 0.5, mat_ptr: m1};
-    let m2 = Rc::<Lambertian>::new(Lambertian {albedo : v3!(0.7, 0.3, 0.3)});
-    let s2 = Sphere {center: v3!(0,-100.5,-1), radius: 100.0, mat_ptr: m2};
-    //let s3 = Sphere {center: v3!(-1,0.75,-1.5), radius: 0.5, mat_ptr: None};
-    //let s4 = Sphere {center: v3!(1,0.75,-1.5), radius: 0.5, mat_ptr: None};
+    let material_ground = Rc::new(Lambertian { albedo: v3!(0.8, 0.8, 0.0)});
+    let material_center = Rc::new(Lambertian { albedo: v3!(0.8, 0.8, 0.5)});
+    let material_left   = Rc::new(Dielectric {ir: 1.5});
+    let material_right  = Rc::new(Metal { albedo: v3!(0.3, 0.6, 0.5), fuzz: 0.0});
 
-    //let e1 = Sphere {center: v3!(-0.11,0,-0.5), radius: 0.07, mat_ptr: None};
-    //let e2 = Sphere {center: v3!(0.11,0,-0.5), radius: 0.07, mat_ptr: None};
+    let s1 = Sphere {center: v3!(0,-100.5,-1), radius: 100.0, mat_ptr: material_ground};
+    let s2 = Sphere {center: v3!(0,0,-1), radius: 0.5, mat_ptr: material_center};
+    let s3 = Sphere {center: v3!(-1,0,-1), radius: 0.5, mat_ptr: material_left};
+    let s4 = Sphere {center: v3!(1,0,-1), radius: 0.5, mat_ptr: material_right};
+
 
     world.add(Box::<Sphere>::new(s1));
     world.add(Box::<Sphere>::new(s2));
-    //world.add(Box::<Sphere>::new(s3));
-    //world.add(Box::<Sphere>::new(s4));
-    //world.add(Box::<Sphere>::new(e1));
-    //world.add(Box::<Sphere>::new(e2));
+    world.add(Box::<Sphere>::new(s3));
+    world.add(Box::<Sphere>::new(s4));
 
     let cam =  Camera {..Default::default() };
 
@@ -49,11 +50,10 @@ fn main() {
             
             let mut pixel_color = v3!(0,0,0);
             for _ in 0..S {
-                let mut rng = rand::thread_rng();
-                let normal = Uniform::from(0.0..1.0);
-
-                let u = (i as f64 + normal.sample(&mut rng) as f64)/(W-1) as f64;
-                let v = (j as f64 + normal.sample(&mut rng) as f64)/(H-1) as f64;
+                let mut rngy = rand::thread_rng();
+                let mut rngx = rand::thread_rng();
+                let u = (i as f64 + rngy.gen_range(0.0..1.0) as f64)/(W-1) as f64;
+                let v = (j as f64 + rngx.gen_range(0.0..1.0) as f64)/(H-1) as f64;
                 let r = cam.get_ray(u, v);
                 pixel_color += r.color(&mut world,MD);
 

@@ -3,8 +3,10 @@
 use std::rc::Rc;
 use std::ops::{Div, Add, Sub, Mul,DivAssign, AddAssign, SubAssign, MulAssign};
 use std::fmt;
+use std::cmp;
 use std::io::{Write};
 use rand::distributions::{Distribution, Uniform};
+use rand::Rng;
 
 #[derive(Copy, Clone)]
 pub struct Vec3 {
@@ -205,11 +207,16 @@ impl Vec3 {
 
     #[inline(always)]
     pub fn length_squared(&self) -> f64 {
-        self.x.powf(2.0) + self.y.powf(2.0) + self.z.powf(2.0)
+        self.x*self.x + self.y*self.y + self.z*self.z
     }
     #[inline(always)]
     pub fn length(&self) -> f64 {
-        self.length_squared().powf(0.5)
+        self.length_squared().sqrt()
+    }
+
+    #[inline(always)]
+    pub fn normalize(self) -> Vec3 {
+        self / self.length_squared().sqrt()
     }
 
     pub fn is_close_to_zero(&self) -> bool {
@@ -272,7 +279,7 @@ macro_rules! r {
 
 fn rv3(x: f64, y: f64) -> Vec3 {
     let mut t = rand::thread_rng();
-    Vec3 {x: Uniform::from(x..y).sample(&mut t), y: Uniform::from(x..y).sample(&mut t), z: Uniform::from(x..y).sample(&mut t)}
+    Vec3 {x: t.gen_range(x..y), y: t.gen_range(x..y), z: t.gen_range(x..y)}
 }
 
 fn random_in_unit() -> Vec3 {
@@ -337,6 +344,7 @@ pub struct HitRecord {
 impl HitRecord {
     fn gen_face_normal(r: Ray, outward_normal : Vec3) -> (bool,Vec3) {
         let ff = Vec3::dot(r.direction,outward_normal) < 0.0;
+        //println!("ff: {}", Vec3::dot(r.direction,outward_normal));
         (ff,if ff {outward_normal} else {outward_normal*-1.0})
     }
 }
@@ -400,7 +408,7 @@ impl HittableList {
 
 impl Hittable for HittableList {
     fn hit(&self, r: Ray, t_0 : f64, t_1 : f64) -> Option<HitRecord> {
-        let mut hr : HitRecord = HitRecord {point: v3!(0,0,0), normal: v3!(0,0,0), t: 0.0, front_face : false, mat_ptr : Rc::<Metal>::new(Metal {albedo : v3!(0.8, 0.8, 0.0)})};
+        let mut hr : HitRecord = HitRecord {point: v3!(0,0,0), normal: v3!(0,0,0), t: 0.0, front_face : false, mat_ptr : Rc::<Metal>::new(Metal {albedo : v3!(0.0, 0.0, 0.0), fuzz: 1.0})};
         let mut closest_so_far : f64 = t_1;
         let mut hit_anything : bool = false;
         for obj in self.v.iter() {
@@ -467,7 +475,13 @@ pub struct Lambertian {
 
 #[derive(Copy, Clone)]
 pub struct Metal {
-    pub albedo : Vec3
+    pub albedo : Vec3,
+    pub fuzz : f64
+}
+
+#[derive(Copy, Clone)]
+pub struct Dielectric {
+    pub ir : f64,
 }
  
 impl Material for Lambertian {
@@ -482,13 +496,52 @@ impl Material for Lambertian {
 impl Material for Metal {
     fn scatter(&self, r: Ray, hr: &HitRecord) -> (Vec3,Ray,bool) {
         let refl = reflect(r.direction/r.direction.length(),hr.normal);
-        let scatter = r!(hr.point, refl);
+        let scatter = r!(hr.point, refl + random_in_unit()*self.fuzz);
         (self.albedo,scatter,Vec3::dot(scatter.direction, hr.normal) > 0.0)
     }
 }
 
+impl Material for Dielectric {
+    fn scatter(&self, r: Ray, hr: &HitRecord) -> (Vec3,Ray,bool) {
+        
+
+        let ref_ratio = if hr.front_face {1.0/self.ir} else {self.ir};
+        let unit_dir = r.direction.normalize();
+        let neg_ud = unit_dir*-1.0;
+        let cos = Vec3::dot(neg_ud,hr.normal).min(1.0);
+        let sin = (1.0 - cos.powi(2)).sqrt();
+        let mut rng = rand::thread_rng();
+        let normal = Uniform::from(0.0..1.0);
+        let direction = if (ref_ratio * sin) > 1.0 || (reflectance(cos, ref_ratio) > normal.sample(&mut rng))
+        {
+            reflect(unit_dir, hr.normal)
+        } 
+        else 
+        {
+            refract(unit_dir, hr.normal, ref_ratio)
+        };
+    
+        (v3!(1,1,1),r!(hr.point, direction),true)
+    }
+    
+}
+
 fn reflect(v : Vec3, n : Vec3) -> Vec3 {
     return v - n*Vec3::dot(v,n)*2.0;
+}
+
+fn refract(uv : Vec3, n : Vec3,etai_over_etat : f64) -> Vec3 {
+    let negative_uv = uv*-1.0;
+    let cos = Vec3::dot(negative_uv,n).min(1.0);
+    let r_out_per = (uv + n*cos)*etai_over_etat;
+    let r_out_par = n*(1.0 - r_out_per.length_squared()).abs().sqrt()*-1.0;
+    r_out_par + r_out_per
+}
+
+
+fn reflectance(cosine : f64, ref_idx : f64) -> f64 {
+    let r0 = ((1.0-ref_idx) / (1.0+ref_idx)).powi(2);
+    r0 + (1.0-r0) * (1.0 - cosine).powi(5)
 }
 
 
