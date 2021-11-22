@@ -301,7 +301,7 @@ impl Hittable for Sphere {
         let oc = r.origin - self.center;
         let a = r.direction.length_squared();
         let half_b = Vec3::dot(oc,r.direction);
-        let c = Vec3::dot(oc,oc) - self.radius.powf(2.0);
+        let c = oc.length_squared() - self.radius.powf(2.0);
         let disc = half_b.powf(2.0) - a*c;
         let sqrtd = disc.sqrt();
         let root = (-half_b - sqrtd) / a;
