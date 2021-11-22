@@ -34,12 +34,12 @@ fn main() {
             
             let mut pixel_color = v3!(0,0,0);
             for _ in 0..S {
-                let mut rngu = rand::thread_rng();
-                let mut rngv = rand::thread_rng();
+                let mut rng = rand::thread_rng();
+                //let mut rngv = rand::thread_rng();
                 let normal = Uniform::from(0.0..1.0);
 
-                let u = (i as f64 + normal.sample(&mut rngu) as f64)/(W-1) as f64;
-                let v = (j as f64 + normal.sample(&mut rngv) as f64)/(H-1) as f64;
+                let u = (i as f64 + normal.sample(&mut rng) as f64)/(W-1) as f64;
+                let v = (j as f64 + normal.sample(&mut rng) as f64)/(H-1) as f64;
                 let r = cam.get_ray(u, v);
                 pixel_color += r.color(&mut world,MD);
 

@@ -267,13 +267,11 @@ macro_rules! r {
 
 fn rv3(x: f64, y: f64) -> Vec3 {
     let mut t = rand::thread_rng();
-    let mut t2 = rand::thread_rng();
-    let mut t3 = rand::thread_rng();
-    Vec3 {x: Uniform::from(x..y).sample(&mut t), y: Uniform::from(x..y).sample(&mut t2), z: Uniform::from(x..y).sample(&mut t3)}
+    Vec3 {x: Uniform::from(x..y).sample(&mut t), y: Uniform::from(x..y).sample(&mut t), z: Uniform::from(x..y).sample(&mut t)}
 }
 
 fn rus() -> Vec3 {
-            let mut r = rv3(-1.0,1.0);
+            let mut r;
             loop {
                 r = rv3(-1.0,1.0);
                 if r.length_squared() > 1.0 {continue;} else {break;}
