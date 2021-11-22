@@ -335,3 +335,39 @@ impl Hittable for Sphere {
 }
 
 }
+
+struct HittableList {
+    v:  Vec<Box<dyn Hittable>>,
+}
+
+
+
+impl HittableList {
+    fn clear(&mut self) -> () {self.v.clear();}
+
+    fn add(&mut self, item: Box<dyn Hittable>) -> () {
+        self.v.push(item);
+    }
+
+}
+
+impl Hittable for HittableList {
+    fn hit(&self, r: Ray, t_0 : f64, t_1 : f64) -> Option<HitRecord> {
+        let mut hr : HitRecord = HitRecord {point: v3!(0,0,0), normal: v3!(0,0,0), t: 0.0, front_face : false};
+        let mut closest_so_far : f64 = t_1;
+        let mut hit_anything : bool = false;
+        for obj in self.v.iter() {
+            let test = obj.hit(r,t_0,closest_so_far);
+            match test {
+                Some(val) => {
+                    hit_anything = true;
+                    closest_so_far = val.t;
+                    hr = HitRecord {point : val.point, normal : val.normal,t: val.t,front_face : val.front_face};
+                }
+                None => {}
+            }
+        }
+        if hit_anything 
+        {Some(hr)} else {None}
+    }
+}
