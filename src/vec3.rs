@@ -4,6 +4,7 @@
 use std::ops::{Div, Add, Sub, Mul,DivAssign, AddAssign, SubAssign, MulAssign};
 use std::fmt;
 use std::io::{Write};
+use std::num;
 
 #[derive(Copy, Clone)]
 pub struct Vec3 {
@@ -211,8 +212,16 @@ impl Vec3 {
         self.length_squared().powf(0.5)
     }
 
-    pub fn write_color(&self) {
-        if let Err(e) = writeln!(std::io::stdout(),"{} {} {}",(self.x*255.999) as i32,(self.y*255.999) as i32,(self.z*255.999) as i32) {
+    pub fn write_color(&self, samples_per_pixel : i32) {
+        let mut r = self.x;
+        let mut g = self.y;
+        let mut b = self.z;
+        let scale = 1.0 / samples_per_pixel as f64;
+        r *= scale;
+        g *= scale;
+        b *= scale;
+        
+        if let Err(e) = writeln!(std::io::stdout(),"{} {} {}",(256.0 * clamp(r, 0.0, 0.999)) as i32,(256.0 * clamp(g, 0.0, 0.999)) as i32,(256.0 * clamp(b, 0.0, 0.999)) as i32) {
             println!("Writing error: {}", e.to_string()); 
         }
     }
@@ -372,3 +381,40 @@ impl Hittable for HittableList {
         {Some(hr)} else {None}
     }
 }
+
+
+pub struct Camera {
+    pub origin : Vec3,
+    pub llc : Vec3,
+    pub horiz : Vec3,
+    pub vert : Vec3
+}
+
+impl Default for Camera {
+    fn default() -> Camera {
+        let ar = 16.0 / 9.0;
+        let vh = 2.0;
+        let vw = ar*vh;
+        let focal_length = 1.0;
+        let origin = v3!(0,0,0);
+        let horiz = v3!(vw,0,0);
+        let vert = v3!(0,vh,0);
+        Camera {    origin : origin,
+            llc : origin - horiz/2.0 - vert/2.0 - v3!(0,0,focal_length),
+            horiz : horiz,
+            vert : vert}
+    }
+}
+
+impl Camera {
+    pub fn get_ray(&self, u : f64, v : f64) -> Ray {
+        Ray {origin : self.origin, direction: self.llc + self.horiz*u + self.vert*v - self.origin}
+    }
+}
+
+#[inline(always)]
+    pub fn clamp(u: f64, min: f64, max : f64) -> f64 {
+        if u < min {min}
+        else if u > max {max}
+        else {u}
+    }
