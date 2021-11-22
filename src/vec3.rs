@@ -263,9 +263,9 @@ impl Ray {
         self.origin + self.direction*t
     }
 
-    pub fn color(self) -> Vec3 {
-        let s = Sphere {center: v3!(0.0, 0.0, -1.0), radius: 0.5};
-        let hr = s.hit(self,0.0,f64::INFINITY);
+    pub fn color(self, world : &mut HittableList) -> Vec3 {
+        //let s = Sphere {center: v3!(0.0, 0.0, -1.0), radius: 0.5};
+        let hr = world.hit(self,0.0,f64::INFINITY);
         match hr {
             Some(x) => {
                 (x.normal+1.0)*0.5
@@ -281,6 +281,7 @@ impl Ray {
 
 }
 
+#[derive(Copy, Clone)]
 pub struct HitRecord {
     point : Vec3,
     normal : Vec3,
@@ -297,14 +298,14 @@ impl HitRecord {
     }
 }
 
-trait Hittable {
+pub trait Hittable {
     fn hit(&self, r: Ray, t_0 : f64, t_1 : f64) -> Option<HitRecord> ;
 }
 
 
-struct Sphere {
-    center: Vec3,
-    radius: f64
+pub struct Sphere {
+    pub center: Vec3,
+    pub radius: f64
 }
 
 impl Hittable for Sphere {
@@ -336,16 +337,16 @@ impl Hittable for Sphere {
 
 }
 
-struct HittableList {
-    v:  Vec<Box<dyn Hittable>>,
+pub struct HittableList {
+    pub v:  Vec<Box<dyn Hittable>>,
 }
 
 
 
 impl HittableList {
-    fn clear(&mut self) -> () {self.v.clear();}
+    pub fn clear(&mut self) -> () {self.v.clear();}
 
-    fn add(&mut self, item: Box<dyn Hittable>) -> () {
+    pub fn add(&mut self, item: Box<dyn Hittable>) -> () {
         self.v.push(item);
     }
 
