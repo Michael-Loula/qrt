@@ -300,19 +300,12 @@ impl Hittable for Sphere {
     fn hit(&self, r: Ray, t_0 : f64, t_1 : f64) -> Option<HitRecord> {
         let oc = r.origin - self.center;
         let a = r.direction.length_squared();
-        //println!("a {}", a);
         let half_b = Vec3::dot(oc,r.direction);
-        //println!("hb {}", half_b);
         let c = Vec3::dot(oc,oc) - self.radius.powf(2.0);
-        //println!("c {}", c);
         let disc = half_b.powf(2.0) - a*c;
-        //println!("disc {}", disc);
         let sqrtd = disc.sqrt();
-        //println!("sd {}", sqrtd);
         let root = (-half_b - sqrtd) / a;
-        //println!("r {}", root);
         if root.is_nan() || root < t_0 || t_1 < root {
-            //println!("thing");
 
             None
         } 
