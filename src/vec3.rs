@@ -290,5 +290,42 @@ impl Ray {
     }
 }
 
+pub struct HitRecord {
+    point : Vec3,
+    normal : Vec3,
+    t : f64
+}
+trait Hittable {
+    fn hit(&self, r: Ray, t_0 : f64, t_1 : f64) -> Option<HitRecord> ;
+}
 
 
+struct Sphere {
+    center: Vec3,
+    radius: f64
+}
+
+impl Hittable for Sphere {
+    fn hit(&self, r: Ray, t_0 : f64, t_1 : f64) -> Option<HitRecord> {
+        let oc = r.origin - self.center;
+        let a = r.direction.length_squared();
+        let half_b = Vec3::dot(oc,r.direction);
+        let c = Vec3::dot(oc,oc) - self.radius.powf(2.0);
+        let disc = half_b.powf(2.0) - a*c;
+        let sqrtd = disc.powf(0.5);
+        let root = (-half_b - sqrtd) / a;
+        if root < t_0 || t_1 < root {
+            None
+        } 
+        else {
+            let x = r.at(root);
+            Some(HitRecord {t: root, point: x, normal: (x - self.center) / self.radius})
+
+
+        }
+
+
+
+}
+
+}
