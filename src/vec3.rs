@@ -4,7 +4,7 @@
 use std::ops::{Div, Add, Sub, Mul,DivAssign, AddAssign, SubAssign, MulAssign};
 use std::fmt;
 use std::io::{Write};
-use std::num;
+use rand::distributions::{Distribution, Uniform};
 
 #[derive(Copy, Clone)]
 pub struct Vec3 {
@@ -259,9 +259,26 @@ macro_rules! v3 {
 macro_rules! r {
     ($origin:expr,$direction:expr) => {
         {
-            vec3::Ray {origin: $origin, direction: $direction}
+            Ray {origin: $origin, direction: $direction}
         }
     };
+}
+
+
+fn rv3(x: f64, y: f64) -> Vec3 {
+    let mut t = rand::thread_rng();
+    let mut t2 = rand::thread_rng();
+    let mut t3 = rand::thread_rng();
+    Vec3 {x: Uniform::from(x..y).sample(&mut t), y: Uniform::from(x..y).sample(&mut t2), z: Uniform::from(x..y).sample(&mut t3)}
+}
+
+fn rus() -> Vec3 {
+            let mut r = rv3(-1.0,1.0);
+            loop {
+                r = rv3(-1.0,1.0);
+                if r.length_squared() > 1.0 {continue;} else {break;}
+            }
+            r
 }
 
 
@@ -272,12 +289,15 @@ impl Ray {
         self.origin + self.direction*t
     }
 
-    pub fn color(self, world : &mut HittableList) -> Vec3 {
+    pub fn color(self, world : &mut HittableList, depth : i32) -> Vec3 {
         //let s = Sphere {center: v3!(0.0, 0.0, -1.0), radius: 0.5};
         let hr = world.hit(self,0.0,f64::INFINITY);
+        if depth <= 0 {return v3!(0,0,0)} else {}
         match hr {
             Some(x) => {
-                (x.normal+1.0)*0.5
+                
+                r!(x.point,(x.point + x.normal + rus() - x.point)).color(world,depth-1)*0.5
+                //(x.normal+1.0)*0.5
             }
             None => {
                 let gt = ((self.direction / self.direction.length()).y + 1.0)*0.5;
