@@ -291,7 +291,7 @@ pub struct HitRecord {
 }
 
 impl HitRecord {
-    fn set_face_normal(r: Ray, outward_normal : Vec3) -> (bool,Vec3) {
+    fn gen_face_normal(r: Ray, outward_normal : Vec3) -> (bool,Vec3) {
         let ff = Vec3::dot(r.direction,outward_normal) < 0.0;
         (ff,if ff {outward_normal} else {outward_normal*-1.0})
     }
@@ -324,7 +324,7 @@ impl Hittable for Sphere {
             
             let x = r.at(root);
             let on = (x - self.center) / self.radius;
-            let (ff, norm) = HitRecord::set_face_normal(r, on);
+            let (ff, norm) = HitRecord::gen_face_normal(r, on);
             Some(HitRecord {t: root, point: x, normal: norm, front_face : ff})
 
 
