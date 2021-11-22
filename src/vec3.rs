@@ -284,8 +284,19 @@ impl Ray {
 pub struct HitRecord {
     point : Vec3,
     normal : Vec3,
-    t : f64
+    t : f64,
+    front_face : bool
+
+    
 }
+
+impl HitRecord {
+    fn set_face_normal(r: Ray, outward_normal : Vec3) -> (bool,Vec3) {
+        let ff = Vec3::dot(r.direction,outward_normal) < 0.0;
+        (ff,if ff {outward_normal} else {outward_normal*-1.0})
+    }
+}
+
 trait Hittable {
     fn hit(&self, r: Ray, t_0 : f64, t_1 : f64) -> Option<HitRecord> ;
 }
@@ -312,7 +323,9 @@ impl Hittable for Sphere {
         else {
             
             let x = r.at(root);
-            Some(HitRecord {t: root, point: x, normal: (x - self.center) / self.radius})
+            let on = (x - self.center) / self.radius;
+            let (ff, norm) = HitRecord::set_face_normal(r, on);
+            Some(HitRecord {t: root, point: x, normal: norm, front_face : ff})
 
 
         }
