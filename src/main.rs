@@ -27,18 +27,37 @@ fn main() {
 
     let mut world = HittableList {v: Vec::new()};
 
-    let s1 = Sphere {center: v3!(0,-100.5,-1), radius: 100.0, mat_ptr: Rc::new(Lambertian { albedo: v3!(0.8, 0.8, 0.0)})};
-    let s2 = Sphere {center: v3!(0,0,-1), radius: 0.5, mat_ptr: Rc::new(Lambertian { albedo: v3!(0.7, 0.3, 0.3)})};
-    let s31 = Sphere {center: v3!(-1,0,-1), radius: 0.5, mat_ptr: Rc::new(Dielectric {ir: 1.5})};
-    let s32 = Sphere {center: v3!(-1,0,-1), radius: -0.4, mat_ptr: Rc::new(Dielectric {ir: 1.5})};
-    let s4 = Sphere {center: v3!(1,0,-1), radius: 0.5, mat_ptr: Rc::new(Metal { albedo: v3!(0.8, 0.6, 0.2), fuzz: 0.2})};
 
-
-    world.add(Box::<Sphere>::new(s1));
-    world.add(Box::<Sphere>::new(s2));
-    world.add(Box::<Sphere>::new(s31));
-    world.add(Box::<Sphere>::new(s32));
-    world.add(Box::<Sphere>::new(s4));
+    world.add(
+        Box::new(Sphere {
+            center: v3!(0,-100.5,-1),
+            radius: 100.0,
+            mat_ptr: Rc::new(Lambertian { albedo: v3!(0.8, 0.8, 0.0)})})
+    );
+    world.add(
+        Box::new(Sphere {
+            center: v3!(0,0,-1),
+            radius: 0.5,
+            mat_ptr: Rc::new(Lambertian { albedo: v3!(0.7, 0.3, 0.3)})})
+    );
+    world.add(
+        Box::new(Sphere {
+            center: v3!(-1,0,-1),
+            radius: 0.5,
+            mat_ptr: Rc::new(Dielectric {ir: 1.5})})
+    );
+    world.add(
+        Box::new(Sphere {
+            center: v3!(-1,0,-1),
+            radius: -0.4,
+            mat_ptr: Rc::new(Dielectric {ir: 1.5})})
+    );
+    world.add(
+        Box::new(Sphere {
+            center: v3!(1,0,-1),
+            radius: 0.5,
+            mat_ptr: Rc::new(Metal { albedo: v3!(0.8, 0.6, 0.2), fuzz: 0.05})})
+    );
 
     let cam =  Camera {..Default::default() };
     let mut rng = rand::thread_rng();
