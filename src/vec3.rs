@@ -117,7 +117,6 @@ impl Sub<f64> for Vec3 {
     }
 }
 
-//here
 
 impl AddAssign for Vec3 {
 
@@ -307,20 +306,20 @@ impl Ray {
         self.origin + self.direction*t
     }
 
-    pub fn color(self, world : &mut HittableList, depth : i32) -> Vec3 {
-        //let s = Sphere {center: v3!(0.0, 0.0, -1.0), radius: 0.5};
+    pub fn color(self, world : &mut HittableList, depth : i32, u : i32, v : i32) -> Vec3 {
         let hr = world.hit(self,0.001,f64::INFINITY);
         if depth <= 0 {return v3!(0,0,0)} else {}
         match hr {
             Some(ref x) => {
-                            
                             let (att, scat, hit) = x.mat_ptr.scatter(self,x);
-                            if hit {scat.color(world,depth-1)*att}
-                            else {v3!(0,0,0)}
+                            if hit {scat.color(world,depth-1,u,v)*att}
+                            else {
+                                v3!(0,0,0)
+                            }
                         }
                     
             None => {
-                let gt = ((self.direction / self.direction.length()).y + 1.0)*0.5;
+              let gt = ((self.direction / self.direction.length()).y + 1.0)*0.5;
                 v3!( 1.0, 1.0, 1.0)*(1.0-gt) + v3!(0.5,0.7,1.0)*gt
             }
         }
@@ -344,7 +343,6 @@ pub struct HitRecord {
 impl HitRecord {
     fn gen_face_normal(r: Ray, outward_normal : Vec3) -> (bool,Vec3) {
         let ff = Vec3::dot(r.direction,outward_normal) < 0.0;
-        //println!("ff: {}", Vec3::dot(r.direction,outward_normal));
         (ff,if ff {outward_normal} else {outward_normal*-1.0})
     }
 }
@@ -370,13 +368,17 @@ impl Hittable for Sphere {
         let c = oc.length_squared() - self.radius.powf(2.0);
         let disc = half_b.powf(2.0) - a*c;
         let sqrtd = disc.sqrt();
-        let root = (-half_b - sqrtd) / a;
+        let mut root = (-half_b - sqrtd) / a;
         if root.is_nan() || root < t_0 || t_1 < root {
-
-            None
+            root = (-half_b + sqrtd) / a;
+            if root.is_nan() || root < t_0 || t_1 < root { None } else { 
+                let x = r.at(root);
+                let on = (x - self.center) / self.radius;
+                let (ff, norm) = HitRecord::gen_face_normal(r, on);
+                Some(HitRecord {t: root, point: x, normal: norm, front_face : ff, mat_ptr : self.mat_ptr.clone()})
+            }
         } 
         else {
-            
             let x = r.at(root);
             let on = (x - self.center) / self.radius;
             let (ff, norm) = HitRecord::gen_face_normal(r, on);
@@ -408,13 +410,14 @@ impl HittableList {
 
 impl Hittable for HittableList {
     fn hit(&self, r: Ray, t_0 : f64, t_1 : f64) -> Option<HitRecord> {
-        let mut hr : HitRecord = HitRecord {point: v3!(0,0,0), normal: v3!(0,0,0), t: 0.0, front_face : false, mat_ptr : Rc::<Metal>::new(Metal {albedo : v3!(0.0, 0.0, 0.0), fuzz: 1.0})};
+        let mut hr : HitRecord = HitRecord {point: v3!(0,0,0), normal: v3!(0,0,0), t: 0.0, front_face : false, mat_ptr : Rc::new(Dielectric {ir: 1.5})};
         let mut closest_so_far : f64 = t_1;
         let mut hit_anything : bool = false;
         for obj in self.v.iter() {
             let test = obj.hit(r,t_0,closest_so_far);
             match test {
                 Some(val) => {
+
                     hit_anything = true;
                     closest_so_far = val.t;
                     hr = val;
@@ -504,7 +507,6 @@ impl Material for Metal {
 impl Material for Dielectric {
     fn scatter(&self, r: Ray, hr: &HitRecord) -> (Vec3,Ray,bool) {
         
-
         let ref_ratio = if hr.front_face {1.0/self.ir} else {self.ir};
         let unit_dir = r.direction.normalize();
         let neg_ud = unit_dir*-1.0;
@@ -512,7 +514,9 @@ impl Material for Dielectric {
         let sin = (1.0 - cos.powi(2)).sqrt();
         let mut rng = rand::thread_rng();
         let normal = Uniform::from(0.0..1.0);
-        let direction = if (ref_ratio * sin) > 1.0 || (reflectance(cos, ref_ratio) > normal.sample(&mut rng))
+        let cant = (ref_ratio * sin) > 1.0;
+        let refl = reflectance(cos, ref_ratio) > normal.sample(&mut rng);
+        let direction = if  cant || refl
         {
             reflect(unit_dir, hr.normal)
         } 
