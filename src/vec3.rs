@@ -5,7 +5,7 @@ use std::io::Write;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 use std::rc::Rc;
 
-#[derive(Copy, Clone)]
+#[derive(PartialEq, Copy, Clone)]
 pub struct Vec3 {
     pub x: f64,
     pub y: f64,
@@ -568,4 +568,27 @@ fn refract(uv: Vec3, n: Vec3, etai_over_etat: f64) -> Vec3 {
 fn reflectance(cosine: f64, ref_idx: f64) -> f64 {
     let r0 = ((1.0 - ref_idx) / (1.0 + ref_idx)).powi(2);
     r0 + (1.0 - r0) * (1.0 - cosine).powi(5)
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::Vec3;
+
+    #[test]
+    fn add_vec3() {
+        assert_eq!(v3!(1, 0, 1) + v3!(0, 1, 0), v3!(1, 1, 1));
+    }
+    #[test]
+    fn sub_vec3() {
+        assert_eq!(v3!(1, 0, 1) - v3!(0, 1, 0), v3!(1, -1, 1));
+    }
+    #[test]
+    fn scalar_mul_vec3() {
+        assert_eq!(v3!(1, 0, 1) * 2.0, v3!(2, 0, 2));
+    }
+    #[test]
+    fn scalar_div_vec3() {
+        assert_eq!(v3!(1, 0, 1) / 2.0, v3!(0.5, 0, 0.5));
+    }
 }
