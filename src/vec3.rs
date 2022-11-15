@@ -88,6 +88,18 @@ impl Mul<f64> for Vec3 {
     }
 }
 
+impl Mul<Vec3> for f64 {
+    type Output = Vec3;
+
+    fn mul(self, _rhs: Vec3) -> Vec3 {
+        Vec3 {
+            x: self * _rhs.x,
+            y: self * _rhs.y,
+            z: self * _rhs.z,
+        }
+    }
+}
+
 impl Add<f64> for Vec3 {
     type Output = Self;
     fn add(self, _rhs: f64) -> Vec3 {
@@ -204,7 +216,7 @@ impl Vec3 {
         (self.x.abs() < E) && (self.y.abs() < E) && (self.z.abs() < E)
     }
 
-    pub fn write_color(&self, samples_per_pixel: i32) {
+    pub fn write_color(&self, samples_per_pixel: i32, writer: &mut impl Write) {
         let mut r = self.x;
         let mut g = self.y;
         let mut b = self.z;
@@ -214,7 +226,7 @@ impl Vec3 {
         b = (b * scale).sqrt();
 
         if let Err(e) = writeln!(
-            std::io::stdout(),
+            writer,
             "{} {} {}",
             (256.0 * clamp(r, 0.0, 0.999)) as i32,
             (256.0 * clamp(g, 0.0, 0.999)) as i32,
@@ -303,21 +315,21 @@ impl Ray {
     pub fn color(self, world: &mut HittableList, depth: i32, u: i32, v: i32) -> Vec3 {
         let hr = world.hit(self, 0.001, f64::INFINITY);
         if depth <= 0 {
-            return v3!(0, 0, 0);
+            v3!(0, 0, 0)
         } else {
-        }
-        match hr {
-            Some(ref x) => {
-                let (att, scat, hit) = x.mat_ptr.scatter(self, x);
-                if hit {
-                    scat.color(world, depth - 1, u, v) * att
-                } else {
-                    v3!(0, 0, 0)
+            match hr {
+                Some(ref x) => {
+                    let (att, scat, hit) = x.mat_ptr.scatter(self, x);
+                    if hit {
+                        scat.color(world, depth - 1, u, v) * att
+                    } else {
+                        v3!(0, 0, 0)
+                    }
                 }
-            }
-            None => {
-                let gt = ((self.direction / self.direction.length()).y + 1.0) * 0.5;
-                v3!(1.0, 1.0, 1.0) * (1.0 - gt) + v3!(0.5, 0.7, 1.0) * gt
+                None => {
+                    let gt = ((self.direction / self.direction.length()).y + 1.0) * 0.5;
+                    v3!(1.0, 1.0, 1.0) * (1.0 - gt) + v3!(0.5, 0.7, 1.0) * gt
+                }
             }
         }
     }
@@ -588,7 +600,18 @@ mod tests {
         assert_eq!(v3!(1, 0, 1) * 2.0, v3!(2, 0, 2));
     }
     #[test]
+    fn scalar_mul2_vec3() {
+        assert_eq!(2.0 * v3!(1, 0, 1), v3!(2, 0, 2));
+    }
+    #[test]
     fn scalar_div_vec3() {
         assert_eq!(v3!(1, 0, 1) / 2.0, v3!(0.5, 0, 0.5));
+    }
+    #[test]
+    fn write_color() {
+        let u = v3!(1, 1, 1);
+        let mut output = Vec::new();
+        u.write_color(20, &mut output);
+        assert_eq!(&output, b"57 57 57\n");
     }
 }

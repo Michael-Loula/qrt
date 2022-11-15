@@ -1,6 +1,7 @@
 mod vec3;
 
 use rand::Rng;
+use std::cell::RefCell;
 use std::io::{stdout, Write};
 use std::rc::Rc;
 use vec3::Camera;
@@ -72,7 +73,7 @@ fn main() {
                 let r = cam.get_ray(u, v);
                 pixel_color += r.color(&mut world, MD, i, j);
             }
-            pixel_color.write_color(S);
+            pixel_color.write_color(S, &mut std::io::stdout());
         }
     }
 
